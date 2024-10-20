@@ -119,8 +119,8 @@
 // ==========================
 namespace Config {
     // Window settings
-    constexpr int WINDOW_WIDTH = 851*2;
-    constexpr int WINDOW_HEIGHT =   315*2.5 ;
+    constexpr int WINDOW_WIDTH = 1920;
+    constexpr int WINDOW_HEIGHT =   1080;
     constexpr char WINDOW_TITLE[] = "CloudPeek Point Cloud Viewer";
 
     // Grid settings

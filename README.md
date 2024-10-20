@@ -1,7 +1,7 @@
 # CloudPeek
 
 
-![CloudPeek](img/CloudPeek_cover.png)
+![CloudPeek](data/img/CloudPeek_cover.png)
 CloudPeek is a lightweight, c++ single-header, cross-platform point cloud viewer, designed for simplicity and efficiency without relying on heavy external libraries like PCL or Open3D. It provides an intuitive way to visualize and interact with 3D point cloud data across multiple platforms. Whether you're working with LiDAR scans, photogrammetry, or other 3D datasets, CloudPeek delivers a minimalistic yet powerful tool for seamless exploration and analysis—all with just a single header file.
 
 ![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)
@@ -14,7 +14,7 @@ CloudPeek is a lightweight, c++ single-header, cross-platform point cloud viewer
   - Efficiently renders large point clouds using OpenGL.
   - Supports dynamic point sizes and color mapping based on distance.
 
-- **Comprehensive Camera Controls `Arcball Camera`**
+- **Comprehensive Camera Controls `Arcball Camera Model`**
   - **Zoom:** Smooth zooming in and out with adjustable speed.
   - **Pan:** Navigate the scene horizontally and vertically.
   - **Rotate:** Orbit around the target point with intuitive mouse controls.
@@ -81,7 +81,7 @@ Execute the run script with a sample PCD file.
 
 # 🎮 Usage
 
-Once the application is running, you can interact with the point cloud using the following controls:
+Once the application is running smiler to this [demo](data/vid/CloudPeek_Viewer_KITTI_PCD_Demo.mp4), you can interact with the point cloud using the following controls:
 
 ## ⌨️ Keyboard Shortcuts
 - **Toggle Cursor Capture**: Press `F1` to switch between captured and free cursor modes.
