@@ -1,0 +1,1 @@
+ g++ main.cpp -o point_cloud_viewer -lglfw -lGLEW -lGL -pthread -ltbb -std=c++17
