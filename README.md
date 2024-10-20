@@ -67,8 +67,7 @@ Ensure you have the following installed on your system:
 > Note: Ensure build.sh has execution permissions. If not, make it executable: `$chmod +x build.sh`
 
 3. **Run the Application**
-4. 
-Execute the run script with a sample PCD file.
+4. **Execute the run script with a sample PCD file**
 
 ```bash
 
