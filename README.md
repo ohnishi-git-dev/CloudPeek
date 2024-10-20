@@ -162,4 +162,4 @@ Please ensure your code adheres to the project's coding standards and includes a
 Distributed under the Apache License 2.0. 
 
 # 📫 Contact
-Author Geekgineer [abdalrahman.m5959@example.com](mailto:abdalrahman.m5959@gmail.com).
+Author Geekgineer [abdalrahman.m5959@gmail.com](mailto:abdalrahman.m5959@gmail.com).
