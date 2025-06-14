@@ -343,8 +343,9 @@ inline bool readPCD(const std::string& filename, std::vector<Point>& points) {
         for (size_t f = 0; f < fields.size(); ++f) {
             float value = *reinterpret_cast<const float*>(ptr);
             ptr += sizeof(float);
-            if (f == x_idx) p.x = value;
-            else if (f == y_idx) p.y = value;
+            // Swap x and y axes when assigning point coordinates
+            if (f == x_idx) p.y = value;
+            else if (f == y_idx) p.x = value;
             else if (f == z_idx) p.z = value;
             else if (hasRGB && f == rgb_idx) rgbInt = *reinterpret_cast<const uint32_t*>(&value);
         }
@@ -803,10 +804,11 @@ private:
         float grid_step = Config::GRID_STEP;   // Finer grid lines
 
         for (float i = -grid_size; i <= grid_size; i += grid_step) {
-            // Lines parallel to Y-axis (X fixed, Z=0)
-            grid_vertices.insert(grid_vertices.end(), {i, -grid_size, 0.0f, i, grid_size, 0.0f});
-            // Lines parallel to X-axis (Y fixed, Z=0)
+            // Swap X and Y axes in grid generation
+            // Lines originally parallel to Y-axis become parallel to X-axis
             grid_vertices.insert(grid_vertices.end(), {-grid_size, i, 0.0f, grid_size, i, 0.0f});
+            // Lines originally parallel to X-axis become parallel to Y-axis
+            grid_vertices.insert(grid_vertices.end(), {i, -grid_size, 0.0f, i, grid_size, 0.0f});
         }
 
         glGenVertexArrays(1, &grid_vao_);
@@ -827,13 +829,13 @@ private:
     void setupAxes() {
         // Define axes lines (X - Red, Y - Green, Z - Blue)
         std::vector<float> axes_vertices = {
-            // X-axis (Red)
+            // X-axis (Red) now points along original Y direction
             0.0f, 0.0f, 0.0f,  1.0f, 0.0f, 0.0f,
-            1.0f, 0.0f, 0.0f,  1.0f, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f,  1.0f, 0.0f, 0.0f,
 
-            // Y-axis (Green)
+            // Y-axis (Green) now points along original X direction
             0.0f, 0.0f, 0.0f,  0.0f, 1.0f, 0.0f,
-            0.0f, 1.0f, 0.0f,  0.0f, 1.0f, 0.0f,
+            1.0f, 0.0f, 0.0f,  0.0f, 1.0f, 0.0f,
 
             // Z-axis (Blue)
             0.0f, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f,

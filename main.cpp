@@ -72,8 +72,9 @@ inline void loadEventsAsyncToViewer(const std::string& filename,
         prev_t = t;
 
         Point pt;
-        pt.x = static_cast<float>(x / 100.0);
-        pt.y = static_cast<float>(y / 100.0);
+        // Swap x and y axes when mapping from CSV to points
+        pt.x = static_cast<float>(y / 100.0);
+        pt.y = static_cast<float>(x / 100.0);
         pt.z = static_cast<float>(0.0); // Assuming z is always 0 for 2D events
 
         if (p == 0) {          // polarity 0 -> blue
