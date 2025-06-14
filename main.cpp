@@ -1,18 +1,18 @@
 /*
  * CloudPeeK a Point Cloud Viewer Application
  * 
- * This application loads a PCD (Point Cloud Binary Data) file asynchronously and streams it to a PointCloudViewer. 
- * Optionally, the points can be colored based on their distance from the origin.
+ * This application loads event data from a CSV file and streams it to a PointCloudViewer.
+ * Points are colored in real-time based on their polarity value.
  *
  * Main functionalities:
- *  - Asynchronous loading and processing of PCD files
+ *  - Asynchronous loading of event data from a CSV file
  *  - Parallel computation for performance optimization
- *  - Batch-wise streaming of points to the viewer for real-time visualization
- *  - Optional color mapping based on point distance
+ *  - Batch-wise streaming of events to the viewer for real-time visualization
+ *  - Coloring of points based on event polarity
  * 
  * Key components:
  *  - PointCloudViewer: A viewer single header that handles rendering the point cloud.
- *  - loadPCDAsyncToViewer: A function to load PCD data asynchronously and stream it to the viewer.
+ *  - loadEventsAsyncToViewer: A function to load CSV event data asynchronously and stream it to the viewer.
  * 
  * Author: Abdalrahman M. Amer, www.linkedin.com/in/abdalrahman-m-amer
  * Date: 20.10.2024
@@ -25,79 +25,87 @@
 #include <string>
 #include <cmath>
 #include <vector>
+#include <fstream>
+#include <sstream>
 #include <functional> // For std::ref and std::cref
 #include <tbb/tbb.h>
 
 
-// Optimized function to load PCD asynchronously with optional coloring
-inline void loadPCDAsyncToViewer(const std::string& filename, PointCloudViewer& viewer, bool apply_coloring) {
-    std::vector<Point> points;
-    if (!readPCD(filename, points)) {
-        std::cerr << "Failed to load PCD file: " << filename << '\n';
+// Function to load events from a CSV file and stream them to the viewer
+// The CSV is expected to contain: x,y,polarity,timestamp
+inline void loadEventsAsyncToViewer(const std::string& filename,
+                                   PointCloudViewer& viewer) {
+    std::ifstream file(filename);
+    if (!file) {
+        std::cerr << "Failed to open CSV file: " << filename << '\n';
         return;
     }
 
-    size_t total_points = points.size();
+    std::string line;
+    // Skip header if present
+    if (!std::getline(file, line))
+        return;
 
-    // Determine the maximum distance for normalization
-    float max_distance = 50.0f; // Default value meter
-    if (apply_coloring) {
-        // Compute the actual maximum distance in the dataset using parallel reduction
-        max_distance = std::transform_reduce(
-            std::execution::par,
-            points.begin(),
-            points.end(),
-            0.0f,
-            [](float a, float b) { return std::max(a, b); },
-            [&](const Point& p) -> float {
-                return std::sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
-            }
-        );
+    constexpr size_t batch_size = 500; // Number of events to add per update
+    std::vector<Point> batch;
+    batch.reserve(batch_size);
 
-        // To avoid division by zero
-        if (max_distance == 0.0f) max_distance = 1.0f;
-    }
+    int prev_t = 0;
 
-    // Split the points into smaller batches for streaming
-    constexpr size_t batch_size = 10000; // Adjust as needed for real-time streaming
-    size_t batches = (total_points + batch_size - 1) / batch_size;
-
-    // Process and stream batches
-    for (size_t i = 0; i < batches && viewer.isRunning(); ++i) {
-        size_t start_idx = i * batch_size;
-        size_t end_idx = std::min(start_idx + batch_size, total_points);
-        std::vector<Point> batch(points.begin() + start_idx, points.begin() + end_idx);
-
-        if (apply_coloring) {
-            // Color the current batch of points
-            colorPointsBasedOnDistance(batch, max_distance);
+    while (std::getline(file, line) && viewer.isRunning()) {
+        std::istringstream ss(line);
+        int x = 0, y = 0, p = 0, t = 0;
+        char comma;
+        if (!(ss >> x >> comma >> y >> comma >> p >> comma >> t)) {
+            continue; // Skip malformed line
         }
 
+        // Sleep according to timestamp difference to simulate real-time
+        if (prev_t != 0 && t > prev_t) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(t - prev_t));
+        }
+        prev_t = t;
+
+        Point pt;
+        pt.x = static_cast<float>(x);
+        pt.y = static_cast<float>(y);
+        pt.z = static_cast<float>(t);
+
+        if (p == 0) {          // polarity 0 -> blue
+            pt.r = 0; pt.g = 0; pt.b = 255;
+        } else {               // polarity 1 -> red
+            pt.r = 255; pt.g = 0; pt.b = 0;
+        }
+
+        batch.emplace_back(pt);
+        if (batch.size() >= batch_size) {
+            viewer.addPoints(batch);
+            batch.clear();
+        }
+    }
+
+    if (!batch.empty()) {
         viewer.addPoints(batch);
-        std::cout << "Added batch " << i + 1 << "/" << batches 
-                  << " with " << batch.size() << " points.\n";
-        std::this_thread::sleep_for(std::chrono::milliseconds(50)); // Simulate streaming delay
     }
 }
 
 
 int main(int argc, char* argv[]) {
-    // Set default PCD file path and coloring flag
-    std::string pcd_filename = "data/lidar_kitti_sample.pcd"; // Default file
-    bool apply_coloring = true; // Apply color mapping to point cloud (configurable)
+    // Set default CSV file path
+    std::string csv_filename = "data/csv/events.csv";
 
-    // Override PCD filename if provided via command-line arguments
+    // Override CSV filename if provided via command-line arguments
     if (argc > 1) {
-        pcd_filename = argv[1]; 
+        csv_filename = argv[1];
     } else {
-        std::cout << "No PCD file specified. Using default: " << pcd_filename << "\n";
+        std::cout << "No CSV file specified. Using default: " << csv_filename << "\n";
     }
 
     // Initialize viewer with predefined configuration parameters
     PointCloudViewer viewer(Config::WINDOW_WIDTH, Config::WINDOW_HEIGHT, Config::WINDOW_TITLE);
 
-    // Launch async thread to load and stream PCD data to the viewer
-    std::thread loader_thread(loadPCDAsyncToViewer, pcd_filename, std::ref(viewer), apply_coloring);
+    // Launch async thread to load and stream CSV events to the viewer
+    std::thread loader_thread(loadEventsAsyncToViewer, csv_filename, std::ref(viewer));
 
     // Execute the main viewer loop (blocks until viewer window is closed)
     viewer.run();
