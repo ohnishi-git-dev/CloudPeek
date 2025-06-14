@@ -571,6 +571,7 @@ private:
     bool cursor_captured_ = false; // Track cursor mode
     bool toggle_pressed_ = false;  // Debounce toggle key
     bool middle_button_pressed_ = false; // Track middle mouse drag
+    bool right_button_pressed_ = false;  // Track right mouse drag for panning
 
     // Vertex Shader Source
     const char* vertex_shader_src_ = R"(
@@ -1116,7 +1117,7 @@ private:
 
     // Mouse movement callback to respect cursor mode
     void mouse_callback(double xpos, double ypos) {
-        if (!cursor_captured_ && !middle_button_pressed_) return; // Do not process unless cursor is captured or middle button pressed
+        if (!cursor_captured_ && !middle_button_pressed_ && !right_button_pressed_) return; // Do not process unless cursor is captured or mouse drag
 
         if (first_mouse_) {
             last_x_ = static_cast<float>(xpos);
@@ -1130,15 +1131,21 @@ private:
         last_x_ = static_cast<float>(xpos);
         last_y_ = static_cast<float>(ypos);
 
-        float sensitivity = Config::CAMERA_SENSITIVITY;
-        xoffset *= sensitivity;
-        yoffset *= sensitivity;
+        if (right_button_pressed_) {
+            float pan_factor = 0.01f; // Mouse panning sensitivity
+            pan_x_ -= xoffset * pan_factor;
+            pan_y_ += yoffset * pan_factor;
+        } else {
+            float sensitivity = Config::CAMERA_SENSITIVITY;
+            xoffset *= sensitivity;
+            yoffset *= sensitivity;
 
-        azimuth_ += xoffset;
-        elevation_ += yoffset;
+            azimuth_ += xoffset;
+            elevation_ += yoffset;
 
-        // Constrain elevation
-        elevation_ = std::clamp(elevation_, -89.0f, 89.0f);
+            // Constrain elevation
+            elevation_ = std::clamp(elevation_, -89.0f, 89.0f);
+        }
     }
 
     // Mouse button callback
@@ -1149,6 +1156,14 @@ private:
                 first_mouse_ = true;
             } else if (action == GLFW_RELEASE) {
                 middle_button_pressed_ = false;
+                first_mouse_ = true;
+            }
+        } else if (button == GLFW_MOUSE_BUTTON_RIGHT) {
+            if (action == GLFW_PRESS) {
+                right_button_pressed_ = true;
+                first_mouse_ = true;
+            } else if (action == GLFW_RELEASE) {
+                right_button_pressed_ = false;
                 first_mouse_ = true;
             }
         }

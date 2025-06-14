@@ -117,6 +117,7 @@ int main(int argc, char* argv[]) {
     PointCloudViewer viewer(Config::WINDOW_WIDTH, Config::WINDOW_HEIGHT, Config::WINDOW_TITLE);
 
     std::cout << "[Info] Hold the middle mouse button and drag to rotate when the cursor is free." << std::endl;
+    std::cout << "[Info] Right-click and drag to pan the point cloud." << std::endl;
 
     int time_window_ms = 100; // default time window
     if (argc > 2) {
