@@ -87,7 +87,7 @@ Once the application is running smiler to this [demo](data/vid/CloudPeek_Viewer_
 
 
 ## 🖱 Mouse Controls
-- **Rotate Camera**: Click and drag the left mouse button to orbit around the target point.
+- **Rotate Camera**: Click and drag the left mouse button to orbit around the target point. The cursor doesn't need to be captured, but pressing `F1` allows unrestricted rotation across the entire window.
 - **Pan Camera**: Use the arrow keys or W, A, S, D to move the camera horizontally and vertically.
 - **Zoom**: Scroll the mouse wheel to zoom in and out.
 

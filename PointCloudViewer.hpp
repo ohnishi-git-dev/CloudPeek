@@ -1105,9 +1105,14 @@ private:
         }
     }
 
-    // Mouse movement callback to respect cursor mode
+    // Mouse movement callback
     void mouse_callback(double xpos, double ypos) {
-        if (!cursor_captured_) return; // Do not process if cursor is not captured
+        // Allow rotation when the cursor is captured or while the left mouse
+        // button is being pressed. This makes it possible to adjust the
+        // viewing angle without toggling cursor capture.
+        if (!cursor_captured_ &&
+            glfwGetMouseButton(window_, GLFW_MOUSE_BUTTON_LEFT) != GLFW_PRESS)
+            return;
 
         if (first_mouse_) {
             last_x_ = static_cast<float>(xpos);
