@@ -67,14 +67,12 @@ Ensure you have the following installed on your system:
 > Note: Ensure build.sh has execution permissions. If not, make it executable: `$chmod +x build.sh`
 
 3. **Run the Application**
-4. **Execute the run script with a sample PCD file**
+4. **Execute the run script with a sample events CSV file**
 
 ```bash
-
-./run.sh data/lidar_kitti_sample.pcd
-
+./run.sh data/csv/events.csv 100
 ```
-> Note: Replace data/lidar_kitti_sample.pcd with the path to your own PCD file as needed.
+> Note: Replace `data/csv/events.csv` with the path to your CSV file and adjust the optional time window (in milliseconds) as needed. The viewer displays only the events within this sliding window.
 
 
 

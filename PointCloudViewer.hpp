@@ -496,6 +496,24 @@ public:
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 
+    // Replace currently displayed points
+    void setPoints(const std::vector<Point>& new_points) {
+        std::lock_guard<std::mutex> lock(data_mutex_);
+        point_cloud_.clear();
+        point_colors_.clear();
+        point_cloud_.reserve(new_points.size() * 3);
+        point_colors_.reserve(new_points.size() * 3);
+        for (const auto& p : new_points) {
+            point_cloud_.push_back(p.x);
+            point_cloud_.push_back(p.y);
+            point_cloud_.push_back(p.z);
+            point_colors_.push_back(p.r / 255.0f);
+            point_colors_.push_back(p.g / 255.0f);
+            point_colors_.push_back(p.b / 255.0f);
+        }
+        data_updated_ = true;
+    }
+
 private:
     // Window parameters
     int width_, height_;

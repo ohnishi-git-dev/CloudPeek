@@ -25,6 +25,7 @@
 #include <string>
 #include <cmath>
 #include <vector>
+#include <deque>
 #include <fstream>
 #include <sstream>
 #include <functional> // For std::ref and std::cref
@@ -34,7 +35,8 @@
 // Function to load events from a CSV file and stream them to the viewer
 // The CSV is expected to contain: x,y,polarity,timestamp
 inline void loadEventsAsyncToViewer(const std::string& filename,
-                                   PointCloudViewer& viewer) {
+                                   PointCloudViewer& viewer,
+                                   int time_window_ms) {
     std::ifstream file(filename);
     if (!file) {
         std::cerr << "Failed to open CSV file: " << filename << '\n';
@@ -46,11 +48,10 @@ inline void loadEventsAsyncToViewer(const std::string& filename,
     if (!std::getline(file, line))
         return;
 
-    constexpr size_t batch_size = 500; // Number of events to add per update
-    std::vector<Point> batch;
-    batch.reserve(batch_size);
+    struct TimedPoint { Point pt; int ts; };
+    std::deque<TimedPoint> window_points;
 
-    int prev_t = 0;
+    int prev_t = -1;
 
     while (std::getline(file, line) && viewer.isRunning()) {
         std::istringstream ss(line);
@@ -60,8 +61,9 @@ inline void loadEventsAsyncToViewer(const std::string& filename,
             continue; // Skip malformed line
         }
 
+
         // Sleep according to timestamp difference to simulate real-time
-        if (prev_t != 0 && t > prev_t) {
+        if (prev_t >= 0 && t > prev_t) {
             std::this_thread::sleep_for(std::chrono::milliseconds(t - prev_t));
         }
         prev_t = t;
@@ -77,16 +79,23 @@ inline void loadEventsAsyncToViewer(const std::string& filename,
             pt.r = 255; pt.g = 0; pt.b = 0;
         }
 
-        batch.emplace_back(pt);
-        if (batch.size() >= batch_size) {
-            viewer.addPoints(batch);
-            batch.clear();
+        // Add new event and remove expired ones
+        window_points.push_back({pt, t});
+        while (!window_points.empty() &&
+               (t - window_points.front().ts > time_window_ms)) {
+            window_points.pop_front();
         }
+
+        // Convert window points to vector for the viewer
+        std::vector<Point> current_points;
+        current_points.reserve(window_points.size());
+        for (const auto& wp : window_points) {
+            current_points.push_back(wp.pt);
+        }
+
+        viewer.setPoints(current_points);
     }
 
-    if (!batch.empty()) {
-        viewer.addPoints(batch);
-    }
 }
 
 
@@ -104,8 +113,13 @@ int main(int argc, char* argv[]) {
     // Initialize viewer with predefined configuration parameters
     PointCloudViewer viewer(Config::WINDOW_WIDTH, Config::WINDOW_HEIGHT, Config::WINDOW_TITLE);
 
+    int time_window_ms = 100; // default time window
+    if (argc > 2) {
+        time_window_ms = std::stoi(argv[2]);
+    }
+
     // Launch async thread to load and stream CSV events to the viewer
-    std::thread loader_thread(loadEventsAsyncToViewer, csv_filename, std::ref(viewer));
+    std::thread loader_thread(loadEventsAsyncToViewer, csv_filename, std::ref(viewer), time_window_ms);
 
     // Execute the main viewer loop (blocks until viewer window is closed)
     viewer.run();
