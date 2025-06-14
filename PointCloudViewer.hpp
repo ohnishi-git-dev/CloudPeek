@@ -1133,8 +1133,8 @@ private:
 
         if (right_button_pressed_) {
             float pan_factor = 0.01f; // Mouse panning sensitivity
-            pan_x_ -= xoffset * pan_factor;
-            pan_y_ += yoffset * pan_factor;
+            pan_x_ += xoffset * pan_factor;
+            pan_y_ -= yoffset * pan_factor;
         } else {
             float sensitivity = Config::CAMERA_SENSITIVITY;
             xoffset *= sensitivity;
