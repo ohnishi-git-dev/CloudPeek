@@ -81,23 +81,84 @@ inline void loadPCDAsyncToViewer(const std::string& filename, PointCloudViewer& 
 }
 
 
+// Simple RAW loader for the hand spinner dataset
+inline void loadRAWAsyncToViewer(const std::string& filename, PointCloudViewer& viewer) {
+    std::ifstream file(filename, std::ios::binary);
+    if (!file) {
+        std::cerr << "Failed to open RAW file: " << filename << "\n";
+        return;
+    }
+
+    // Skip text header starting with '%'
+    std::string line;
+    while (true) {
+        std::streampos pos = file.tellg();
+        if (!std::getline(file, line)) break;
+        if (line.empty() || line[0] != '%') {
+            file.seekg(pos);
+            break;
+        }
+    }
+
+    constexpr size_t batch_size = 50000;
+    std::vector<Point> batch;
+    batch.reserve(batch_size);
+
+    uint32_t word;
+    size_t t = 0;
+    while (viewer.isRunning() && file.read(reinterpret_cast<char*>(&word), sizeof(word))) {
+        uint8_t type = static_cast<uint8_t>(word >> 28);
+        if (type == 8) {
+            // Skip timestamp high events
+            continue;
+        }
+
+        uint16_t x = static_cast<uint16_t>(word & 0x3FFF);        // lower 14 bits
+        uint16_t y = static_cast<uint16_t>((word >> 14) & 0x3FFF); // next 14 bits
+
+        Point p;
+        p.x = static_cast<float>(x);
+        p.y = static_cast<float>(y);
+        p.z = static_cast<float>(t) * 0.001f; // simple scaling for visualization
+        p.r = p.g = p.b = 255;
+
+        batch.emplace_back(p);
+        ++t;
+
+        if (batch.size() >= batch_size) {
+            viewer.addPoints(batch);
+            batch.clear();
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        }
+    }
+
+    if (!batch.empty()) {
+        viewer.addPoints(batch);
+    }
+}
+
 int main(int argc, char* argv[]) {
-    // Set default PCD file path and coloring flag
-    std::string pcd_filename = "data/lidar_kitti_sample.pcd"; // Default file
+    // Set default file path and coloring flag
+    std::string filename = "data/lidar_kitti_sample.pcd"; // Default file
     bool apply_coloring = true; // Apply color mapping to point cloud (configurable)
 
-    // Override PCD filename if provided via command-line arguments
+    // Override filename if provided via command-line arguments
     if (argc > 1) {
-        pcd_filename = argv[1]; 
+        filename = argv[1];
     } else {
-        std::cout << "No PCD file specified. Using default: " << pcd_filename << "\n";
+        std::cout << "No file specified. Using default: " << filename << "\n";
     }
 
     // Initialize viewer with predefined configuration parameters
     PointCloudViewer viewer(Config::WINDOW_WIDTH, Config::WINDOW_HEIGHT, Config::WINDOW_TITLE);
 
-    // Launch async thread to load and stream PCD data to the viewer
-    std::thread loader_thread(loadPCDAsyncToViewer, pcd_filename, std::ref(viewer), apply_coloring);
+    // Launch appropriate async loader based on file extension
+    std::thread loader_thread;
+    if (filename.size() >= 4 && filename.substr(filename.size() - 4) == ".raw") {
+        loader_thread = std::thread(loadRAWAsyncToViewer, filename, std::ref(viewer));
+    } else {
+        loader_thread = std::thread(loadPCDAsyncToViewer, filename, std::ref(viewer), apply_coloring);
+    }
 
     // Execute the main viewer loop (blocks until viewer window is closed)
     viewer.run();
