@@ -570,6 +570,7 @@ private:
     // Cursor control
     bool cursor_captured_ = false; // Track cursor mode
     bool toggle_pressed_ = false;  // Debounce toggle key
+    bool middle_button_pressed_ = false; // Track middle mouse drag
 
     // Vertex Shader Source
     const char* vertex_shader_src_ = R"(
@@ -686,6 +687,7 @@ private:
         glfwSetWindowUserPointer(window_, this);
         glfwSetFramebufferSizeCallback(window_, framebuffer_size_callback);
         glfwSetCursorPosCallback(window_, mouse_callback_dispatch);
+        glfwSetMouseButtonCallback(window_, mouse_button_callback_dispatch);
         glfwSetScrollCallback(window_, scroll_callback_dispatch);
         glfwSetInputMode(window_, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
             
@@ -1105,9 +1107,16 @@ private:
         }
     }
 
+    // Mouse button callback dispatcher
+    static void mouse_button_callback_dispatch(GLFWwindow* window, int button, int action, int mods) {
+        if (PointCloudViewer* viewer = static_cast<PointCloudViewer*>(glfwGetWindowUserPointer(window))) {
+            viewer->mouse_button_callback(button, action, mods);
+        }
+    }
+
     // Mouse movement callback to respect cursor mode
     void mouse_callback(double xpos, double ypos) {
-        if (!cursor_captured_) return; // Do not process if cursor is not captured
+        if (!cursor_captured_ && !middle_button_pressed_) return; // Do not process unless cursor is captured or middle button pressed
 
         if (first_mouse_) {
             last_x_ = static_cast<float>(xpos);
@@ -1130,6 +1139,19 @@ private:
 
         // Constrain elevation
         elevation_ = std::clamp(elevation_, -89.0f, 89.0f);
+    }
+
+    // Mouse button callback
+    void mouse_button_callback(int button, int action, int mods) {
+        if (button == GLFW_MOUSE_BUTTON_MIDDLE) {
+            if (action == GLFW_PRESS) {
+                middle_button_pressed_ = true;
+                first_mouse_ = true;
+            } else if (action == GLFW_RELEASE) {
+                middle_button_pressed_ = false;
+                first_mouse_ = true;
+            }
+        }
     }
 
     // Scroll callback dispatcher

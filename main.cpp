@@ -11,8 +11,11 @@
  *  - Coloring of points based on event polarity
  * 
  * Key components:
- *  - PointCloudViewer: A viewer single header that handles rendering the point cloud.
+ *  - PointCloudViewer: A single-header viewer that handles rendering the point cloud.
  *  - loadEventsAsyncToViewer: A function to load CSV event data asynchronously and stream it to the viewer.
+ *
+ * New in this version:
+ *  - Dragging with the middle mouse button also rotates the view when the cursor is free.
  * 
  * Author: Abdalrahman M. Amer, www.linkedin.com/in/abdalrahman-m-amer
  * Date: 20.10.2024
@@ -112,6 +115,8 @@ int main(int argc, char* argv[]) {
 
     // Initialize viewer with predefined configuration parameters
     PointCloudViewer viewer(Config::WINDOW_WIDTH, Config::WINDOW_HEIGHT, Config::WINDOW_TITLE);
+
+    std::cout << "[Info] Hold the middle mouse button and drag to rotate when the cursor is free." << std::endl;
 
     int time_window_ms = 100; // default time window
     if (argc > 2) {
