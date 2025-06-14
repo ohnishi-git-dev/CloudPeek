@@ -27,6 +27,59 @@
 #include <vector>
 #include <functional> // For std::ref and std::cref
 #include <tbb/tbb.h>
+#include <fstream>
+
+
+// Simple loader for Prophesee RAW event files.
+// This loader assumes each event is stored as:
+//   uint32_t timestamp;
+//   uint16_t x;
+//   uint16_t y;
+// Events are streamed in small batches to the viewer where
+// x -> X axis, y -> Y axis and timestamp -> Z axis.
+inline void loadRAWAsyncToViewer(const std::string& filename,
+                                 PointCloudViewer& viewer) {
+    std::ifstream file(filename, std::ios::binary);
+    if (!file) {
+        std::cerr << "Failed to open RAW file: " << filename << '\n';
+        return;
+    }
+
+    // Skip header lines that start with '%'
+    std::string line;
+    while (file.peek() == '%') {
+        std::getline(file, line);
+    }
+
+    constexpr size_t batch_size = 10000;
+    std::vector<Point> batch;
+    batch.reserve(batch_size);
+
+    while (viewer.isRunning()) {
+        uint32_t t;
+        uint16_t x, y;
+        file.read(reinterpret_cast<char*>(&t), sizeof(t));
+        file.read(reinterpret_cast<char*>(&x), sizeof(x));
+        file.read(reinterpret_cast<char*>(&y), sizeof(y));
+        if (!file) break;
+
+        Point p;
+        p.x = static_cast<float>(x);
+        p.y = static_cast<float>(y);
+        p.z = static_cast<float>(t) * 1e-6f; // scale timestamp
+        batch.emplace_back(p);
+
+        if (batch.size() >= batch_size) {
+            viewer.addPoints(batch);
+            batch.clear();
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    }
+
+    if (!batch.empty()) {
+        viewer.addPoints(batch);
+    }
+}
 
 
 // Optimized function to load PCD asynchronously with optional coloring
@@ -82,22 +135,27 @@ inline void loadPCDAsyncToViewer(const std::string& filename, PointCloudViewer& 
 
 
 int main(int argc, char* argv[]) {
-    // Set default PCD file path and coloring flag
-    std::string pcd_filename = "data/lidar_kitti_sample.pcd"; // Default file
-    bool apply_coloring = true; // Apply color mapping to point cloud (configurable)
+    // Default input file
+    std::string input_file = "data/raw/hand_spinner.raw";
+    bool apply_coloring = true; // Used for PCD files
 
-    // Override PCD filename if provided via command-line arguments
+    // Override input file if provided via command-line arguments
     if (argc > 1) {
-        pcd_filename = argv[1]; 
+        input_file = argv[1];
     } else {
-        std::cout << "No PCD file specified. Using default: " << pcd_filename << "\n";
+        std::cout << "No input file specified. Using default: " << input_file << "\n";
     }
 
     // Initialize viewer with predefined configuration parameters
     PointCloudViewer viewer(Config::WINDOW_WIDTH, Config::WINDOW_HEIGHT, Config::WINDOW_TITLE);
 
-    // Launch async thread to load and stream PCD data to the viewer
-    std::thread loader_thread(loadPCDAsyncToViewer, pcd_filename, std::ref(viewer), apply_coloring);
+    // Launch async thread based on file type
+    std::thread loader_thread;
+    if (input_file.size() >= 4 && input_file.substr(input_file.size() - 4) == ".raw") {
+        loader_thread = std::thread(loadRAWAsyncToViewer, input_file, std::ref(viewer));
+    } else {
+        loader_thread = std::thread(loadPCDAsyncToViewer, input_file, std::ref(viewer), apply_coloring);
+    }
 
     // Execute the main viewer loop (blocks until viewer window is closed)
     viewer.run();
